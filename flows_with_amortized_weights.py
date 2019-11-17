@@ -44,7 +44,7 @@ class PlanarFlow(nn.Module):
             
             this part is taken from https://github.com/riannevdberg/sylvester-flows/blob/master/models/flows.py
             '''
-            # print('z',zk.shape) # TODO: CHECK THESE OPERATIONS
+            # print('z',zk.shape) #
             # print('u', u_k.shape)
             # print('w', weights_k.shape)
             # print('b', bias_k.shape)

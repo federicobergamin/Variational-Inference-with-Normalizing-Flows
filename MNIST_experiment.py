@@ -30,7 +30,7 @@ def show_image(img, title = "", path = None):
         plt.savefig(path)
     plt.show()
 
-# We use this custom BCE function until PyTorch implements reduce=False
+# We use this custom binary cross entropy
 def binary_cross_entropy(r, x):
     return -torch.sum(x * torch.log(r + 1e-8) + (1 - x) * torch.log(1 - r + 1e-8), dim=-1)
 
@@ -45,7 +45,7 @@ HIDDEN_LAYERS = [400]
 Z_DIM = 40
 N_FLOWS = 10
 
-N_EPOCHS = 150
+N_EPOCHS = 1
 LEARNING_RATE = 1e-5
 MOMENTUM = 0.9
 WEIGHT_DECAY = -1
@@ -98,17 +98,6 @@ print('Model overview and recap\n')
 print(model)
 print('\n')
 
-# for params in model.parameters():
-#     print(params)
-
-
-# ## optimization
-# if WEIGHT_DECAY > 0:
-#     # we add small L2 reg as in the original paper
-#     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999), weight_decay=WEIGHT_DECAY)
-# else:
-#     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.999))
-
 optimizer = torch.optim.RMSprop(model.parameters(), lr=LEARNING_RATE, momentum = MOMENTUM)
 
 ## training loop
@@ -133,22 +122,8 @@ for epoch in range(N_EPOCHS):
         # print('recon shape', conditional_reconstruction.shape)
 
         likelihood = -binary_cross_entropy(reconstruction, images)
-        # print(likelihood)
-        # likelihood = - F.binary_cross_entropy(reconstruction, images, reduction='sum')
-
-        # print('likel hsape', likelihood.shape)
-        # print('likelihood', torch.sum(likelihood))
-        # print('kl', torch.sum(model.kl_divergence))
-        # print('--')
         kl = torch.sum(model.qz - beta * model.pz)
-        # elbo = likelihood - model.kl_divergence
-        # bound = - torch.sum(model.qz) + beta * torch.sum(likelihood) + beta * torch.sum(model.pz)
         bound = beta * torch.sum(likelihood) - kl
-        #
-        # print('Sampled kl', model.kl_divergence.shape)
-
-        # approx_kl.append(kl / len(images))
-
 
         L = - bound / len(images) #BATCH_SIZE
 
@@ -246,66 +221,8 @@ with torch.no_grad():
             plt.title('Reconstruction')
             plt.savefig('reconstruction_during_training/reconstruction_example_{}'.format(i))
 
-## at this point I want to take the test set and compute the latent code
-## for each example and then run PCA or TSNE and plot it
-# latent_representation = []
-# all_labels = []
-# with torch.no_grad():
-#     for i, data in enumerate(test_loader, 0):
-#         images, labels = data
-#         labels = labels.numpy()
-#         images = images.to(device)
-#         for k in range(len(images)):
-#             latent_repr0, _, _ = model.encoder(images[k])
-#             latent_repr = model.flows(latent_repr0)
-#             latent_representation.append(latent_repr.numpy())
-#             all_labels.append(labels[k])
-#
-#     # at this point the two sets contain what we want
-#     # we can do PCA and plot the 2 components results
-#     latent_representation = np.array(latent_representation)
-#     print(latent_representation.shape)
-#     pca = PCA(2)
-#     pca.fit(latent_representation)
-#     feat = pca.fit_transform(latent_representation)
-#     features_pca = np.array(feat)
-#     print(features_pca.shape)
-#
-#     colors = ['#0165fc', '#02ab2e', '#fdaa48', '#fffe7a', '#6a79f7', '#db4bda', '#0ffef9', '#bd6c48', '#fea993', '#1e9167']
-#
-#     COLORS = ["#0072BD",
-#               "#D95319",
-#               "#006450",
-#               "#7E2F8E",
-#               "#77AC30",
-#               "#EDB120",
-#               "#4DBEEE",
-#               "#A2142F",
-#               "#191970",
-#               "#A0522D"]
-#
-#     # print(all_labels)
-#     all_labels = np.array(all_labels)
-#     fig = plt.figure()
-#     for i in range(10):
-#         idxs = np.where(all_labels == i)
-#         # print(idxs)
-#         plt.scatter(features_pca[idxs,0], features_pca[idxs,1], c = colors[i], label = i)
-#
-#     # plt.scatter(features_pca[:,0], features_pca[:,1], c = all_labels)
-#     plt.title('PCA on the latent dimension')
-#     plt.legend()
-#     plt.savefig('PCA/PCA_latent_repr_layer_nlatent_{}'.format(Z_DIM))
-#     plt.show()
 
-
-    ## now we want also to try to sample from the decoder
-    ## RANDOM SAMLING
-    # Z IS RANDOM N(0,1)
-    # mus = torch.zeros((BATCH_SIZE,Z_DIM))
-    # stds = torch.zeros((BATCH_SIZE, Z_DIM))
-    # eps = torch.randn((BATCH_SIZE, Z_DIsM))
-    # random_z = mus.addcmul(stds, eps)
+    # samples form the prios
     for i in range(5):
         # random_latent = torch.randn((N_SAMPLE, Z_DIM), dtype = torch.float).to(device)
         images_from_random = model.sample(N_SAMPLE)

@@ -324,13 +324,12 @@ class VariationalAutoencoderWithFlows(nn.Module):
 
 
         # we reconstruct it
-        #         print(z
         x_mu = self.decoder(new_z)
 
         return x_mu
 
 
-    def sample(self, n_images): # TODO: FIX SAMPLE--> WE ARE SAMPLE Z0 BUT NOT Z_K
+    def sample(self, n_images):
         '''
         Method to sample from our generative model
 
