@@ -15,6 +15,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms, utils
 from torch.autograd import Variable
 from VAE_with_normalizing_flows.VAE_with_flows import VariationalAutoencoderWithFlows
+from VAE_with_normalizing_flows.utils.code_to_load_the_dataset import load_MNIST_dataset
 from sklearn.decomposition import PCA
 
 import matplotlib.pyplot as plt
@@ -31,12 +32,12 @@ def show_image(img, title = "", path = None):
     plt.show()
 
 # We use this custom binary cross entropy
-def binary_cross_entropy(r, x):
-    return -torch.sum(x * torch.log(r + 1e-8) + (1 - x) * torch.log(1 - r + 1e-8), dim=-1)
+# def binary_cross_entropy(r, x):
+#     return -torch.sum(x * torch.log(r + 1e-8) + (1 - x) * torch.log(1 - r + 1e-8), dim=-1)
 
 # Writer will output to ./runs/ directory by default
 writer = SummaryWriter()
-
+ORIGINAL_BINARIZED_MNIST = True
 use_cuda = torch.cuda.is_available()
 print('Do we get access to a CUDA? - ', use_cuda)
 device = torch.device("cuda" if use_cuda else "cpu")
@@ -45,7 +46,7 @@ HIDDEN_LAYERS = [400]
 Z_DIM = 40
 N_FLOWS = 10
 
-N_EPOCHS = 1
+N_EPOCHS = 200
 LEARNING_RATE = 1e-5
 MOMENTUM = 0.9
 WEIGHT_DECAY = -1
@@ -59,41 +60,44 @@ PATH = 'saved_models/'
 
 ## we have the binarized MNIST
 ## TRAIN SET
-training_set = datasets.MNIST('../MNIST_dataset', train=True, download=True,
-                   transform=transforms.ToTensor())
-print('Number of examples in the training set:', len(training_set))
-print('Size of the image:', training_set[0][0].shape)
-## we plot an example only to check it
-idx_ex = 1000
-x, y = training_set[idx_ex] # x is now a torch.Tensor
-plt.imshow(x.numpy()[0], cmap='gray')
-plt.title('Example n {}, label: {}'.format(idx_ex, y))
-plt.show()
+if ORIGINAL_BINARIZED_MNIST:
+    train_loader, val_loader, test_loader = load_MNIST_dataset('Original_MNIST_binarized/', BATCH_SIZE, True, True, True)
+else:
+    training_set = datasets.MNIST('../MNIST_dataset', train=True, download=True,
+                       transform=transforms.ToTensor())
+    print('Number of examples in the training set:', len(training_set))
+    print('Size of the image:', training_set[0][0].shape)
+    ## we plot an example only to check it
+    idx_ex = 1000
+    x, y = training_set[idx_ex] # x is now a torch.Tensor
+    plt.imshow(x.numpy()[0], cmap='gray')
+    plt.title('Example n {}, label: {}'.format(idx_ex, y))
+    plt.show()
 
-### we only check if it is binarized
-input_dim = x.numpy().size
-print('Size of the image:', input_dim)
+    ### we only check if it is binarized
+    input_dim = x.numpy().size
+    print('Size of the image:', input_dim)
 
-flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
+    flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
 
-train_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../MNIST_dataset', train=True, transform=flatten_bernoulli),
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('../MNIST_dataset', train=True, transform=flatten_bernoulli),
+        batch_size=BATCH_SIZE, shuffle=True)
+
+    ## TEST SET
+    test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('../MNIST_dataset', train=False, transform=flatten_bernoulli),
     batch_size=BATCH_SIZE, shuffle=True)
 
-## TEST SET
-test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../MNIST_dataset', train=False, transform=flatten_bernoulli),
-batch_size=BATCH_SIZE, shuffle=True)
-
-## another way to plot some images from the dataset
-dataiter = iter(train_loader)
-images, labels = dataiter.next() ## next return a complete batch --> BATCH_SIZE images
-show_images(images.view(BATCH_SIZE,1,28,28))
+    ## another way to plot some images from the dataset
+    dataiter = iter(train_loader)
+    images, labels = dataiter.next() ## next return a complete batch --> BATCH_SIZE images
+    show_images(images.view(BATCH_SIZE,1,28,28))
 
 
 ## now we have our train and test set
 ## we can create our model and try to train it
-model = VariationalAutoencoderWithFlows(input_dim, HIDDEN_LAYERS, Z_DIM, N_FLOWS, amortized_params_flow = AMORTIZED_WEIGHTS)
+model = VariationalAutoencoderWithFlows(28*28, HIDDEN_LAYERS, Z_DIM, N_FLOWS, amortized_params_flow = AMORTIZED_WEIGHTS)
 print('Model overview and recap\n')
 print(model)
 print('\n')
@@ -114,14 +118,18 @@ for epoch in range(N_EPOCHS):
     for i, data in enumerate(train_loader, 0):
         beta = min(1, 0.01 + t / 700)
         n_batch += 1
-        images, labels = data
+        if ORIGINAL_BINARIZED_MNIST:
+            images = data
+        else:
+            images, labels = data
         images = images.to(device)
 
         reconstruction = model(images)
         # print('images shape', images.shape)
         # print('recon shape', conditional_reconstruction.shape)
 
-        likelihood = -binary_cross_entropy(reconstruction, images)
+        # likelihood = -binary_cross_entropy(reconstruction, images)
+        likelihood = - F.binary_cross_entropy(reconstruction, images, reduction='sum')
         kl = torch.sum(model.qz - beta * model.pz)
         bound = beta * torch.sum(likelihood) - kl
 
@@ -145,7 +153,10 @@ for epoch in range(N_EPOCHS):
     ##
     with torch.no_grad():
         for r, data in enumerate(test_loader, 0):
-            images, labels = data
+            if ORIGINAL_BINARIZED_MNIST:
+                images = data
+            else:
+                images, labels = data
             images = images.to(device)
             reconstruction = model(images)
             # print(conditional_reconstruction.shape)
@@ -170,6 +181,7 @@ for epoch in range(N_EPOCHS):
                 plt.title('Reconstruction from epoch {}'.format(epoch + 1))
                 plt.savefig('reconstruction_during_training/reconstruction_epoch_{}_example_{}'.format(epoch + 1, r))
 
+        model.eval()
         ## we want also to sample something from the model during training
         rendom_samples = model.sample(N_SAMPLE)
         samples = rendom_samples.view(rendom_samples.shape[0], 1, 28, 28)
@@ -203,7 +215,10 @@ plt.show()
 model.eval()
 with torch.no_grad():
     for i, data in enumerate(test_loader, 0):
-        images, labels = data
+        if ORIGINAL_BINARIZED_MNIST:
+            images = data
+        else:
+            images, labels = data
         images = images.to(device)
         reconstruction = model(images)
         # print(conditional_reconstruction.shape)

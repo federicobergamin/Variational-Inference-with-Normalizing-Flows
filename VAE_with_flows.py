@@ -310,6 +310,9 @@ class VariationalAutoencoderWithFlows(nn.Module):
         # we pass the input through the encoder
         if self.amortized_params_flow:
             z, z_mu, z_log_var, u, w, b = self.encoder(input)
+            # print(u.shape)
+            # print(w.shape)
+            # print(b.shape)
             # we have to process the z through the flows
             new_z, logdet_jacobians = self.flows(z, u, w, b)
         else:
@@ -336,9 +339,27 @@ class VariationalAutoencoderWithFlows(nn.Module):
         :return: a sample starting from z ~ N(0,1)
         '''
 
+        # in a VAE + normalizing flows, we should start by a random sample from N(0,1)
+        # and then we should propagate the z into the flows
         z = torch.randn((n_images, self.z_dims), dtype = torch.float)
-        # print(z)
-        samples =  self.decoder(z)
+
+        # since it is amortized flow, maybe we should sample also
+        # the u, the weights and the bias ? #todo: check this
+        u = torch.randn((n_images, self.n_flows, self.z_dims, 1))
+        w = torch.randn((n_images, self.n_flows, 1, self.z_dims))
+        b = torch.randn((n_images, self.n_flows, 1, 1))
+        # print('when we are sampling')
+        # print(u.shape)
+        # print(w.shape)
+        # print(b.shape)
+        if self.amortized_params_flow:
+            # print( self.encoder.u)
+            new_z, _ = self.flows(z, u, w, b)
+        else:
+            new_z, _ = self.flows(z, None, None, None)
+        # when we get to the final flow we get the new_z and we propagate it
+        # into the decoder
+        samples =  self.decoder(new_z)
 
         return samples
 
