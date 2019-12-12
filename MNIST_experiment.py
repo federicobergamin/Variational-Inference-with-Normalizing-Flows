@@ -126,7 +126,7 @@ for epoch in range(N_EPOCHS):
 
         reconstruction = model(images)
         # print('images shape', images.shape)
-        # print('recon shape', conditional_reconstruction.shape)
+        # print('recon shape', test_set_reconstruction.shape)
 
         # likelihood = -binary_cross_entropy(reconstruction, images)
         likelihood = - F.binary_cross_entropy(reconstruction, images, reduction='sum')
@@ -159,19 +159,19 @@ for epoch in range(N_EPOCHS):
                 images, labels = data
             images = images.to(device)
             reconstruction = model(images)
-            # print(conditional_reconstruction.shape)
+            # print(test_set_reconstruction.shape)
             recon_image_ = reconstruction.view(reconstruction.shape[0], 1, 28, 28)
             images = images.view(images.shape[0], 1, 28, 28)
             if r % 100 == 0:
                 # show_images(images, 'original')
-                # show_images(recon_image_, 'conditional_reconstruction')
+                # show_images(recon_image_, 'test_set_reconstruction')
                 grid1 = torchvision.utils.make_grid(images)
                 writer.add_image('orig images', grid1, 0)
                 grid2 = torchvision.utils.make_grid(recon_image_)
                 writer.add_image('recon images', grid2)
                 writer.close()
-                ## maybe we just store the conditional_reconstruction
-                ## maybe we just store the conditional_reconstruction
+                ## maybe we just store the test_set_reconstruction
+                ## maybe we just store the test_set_reconstruction
                 images = utils.make_grid(images)
                 recon_image_ = utils.make_grid(recon_image_)
                 plt.imshow(images[0], cmap='gray')
@@ -192,7 +192,7 @@ for epoch in range(N_EPOCHS):
 
 
 
-    print('Epoch: {}, Elbo: {}, recon_error: {}, kl: {}'.format(epoch+1, tmp_elbo/ len(train_loader.dataset), tmp_recon/ len(train_loader.dataset), tmp_kl/ len(train_loader.dataset)))
+    print('Epoch: {}, Elbo: {}, recon_error: {}, kl: {}'.format(epoch+1, tmp_elbo/ len(train_loader.dataset), -tmp_recon/ len(train_loader.dataset), tmp_kl/ len(train_loader.dataset)))
 
     if epoch + 1 > SAVE_MODEL_EPOCH:
         ## we have to store the model
@@ -221,12 +221,12 @@ with torch.no_grad():
             images, labels = data
         images = images.to(device)
         reconstruction = model(images)
-        # print(conditional_reconstruction.shape)
+        # print(test_set_reconstruction.shape)
         recon_image_ = reconstruction.view(reconstruction.shape[0], 1, 28, 28)
         images = images.view(images.shape[0], 1, 28, 28)
         if i % 100 == 0:
             show_images(images, 'original')
-            show_images(recon_image_, 'conditional_reconstruction')
+            show_images(recon_image_, 'test_set_reconstruction')
             images = utils.make_grid(images)
             recon_image_ = utils.make_grid(recon_image_)
             plt.imshow(images[0], cmap='gray')

@@ -162,7 +162,7 @@ class Decoder(nn.Module):
         x = input
         for layer in self.hidden_layers:
             x = F.relu(layer(x))
-        # print(self.conditional_reconstruction(x).shape)
+        # print(self.test_set_reconstruction(x).shape)
         return self.output_activation(self.reconstruction(x))
 
 

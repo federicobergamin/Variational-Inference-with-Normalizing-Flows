@@ -70,7 +70,20 @@ def show_image(img, title = "", path = None):
 # print(i)
 #
 
-def load_MNIST_dataset(dir, batch_size, flatten = False, verbose = False, show_examples = False):
+def load_MNIST_dataset(dir, batch_size, flatten = False, shuffled = False, verbose = False, show_examples = False):
+
+    if isinstance(batch_size, list):
+        assert len(batch_size) == 3, "In case you are using a list for the batch size, it should contain the batch size for " \
+                                     "the training, validation and test set"
+        train_batch_size = batch_size[0]
+        valid_batch_size = batch_size[1]
+        test_batch_size = batch_size[2]
+    else:
+        # we assume the same batch size for all the three
+        train_batch_size = batch_size
+        valid_batch_size = batch_size
+        test_batch_size = batch_size
+
 
     print('Loading the datasets...')
     train = np.loadtxt(dir + 'binarized_mnist_train.amat')
@@ -92,15 +105,15 @@ def load_MNIST_dataset(dir, batch_size, flatten = False, verbose = False, show_e
         print('Validation et shape:', validation.shape)
         print('Test set shape', test.shape)
 
-    train_loader = data_utils.DataLoader(train, batch_size=batch_size, shuffle=False)
-    val_loader = data_utils.DataLoader(validation, batch_size=batch_size, shuffle=False)
-    test_loader = data_utils.DataLoader(test, batch_size=batch_size, shuffle=True)
+    train_loader = data_utils.DataLoader(train, batch_size=train_batch_size, shuffle=shuffled)
+    val_loader = data_utils.DataLoader(validation, batch_size=valid_batch_size, shuffle=shuffled)
+    test_loader = data_utils.DataLoader(test, batch_size=test_batch_size, shuffle=shuffled)
 
     if show_examples:
         dataiter = iter(train_loader)
         images = dataiter.next()  ## next return a complete batch --> BATCH_SIZE images
         if flatten:
-            show_images(images.view(batch_size, 1, 28,28))
+            show_images(images.view(train_batch_size, 1, 28,28))
         else:
             show_images(images.unsqueeze(1))
 
