@@ -8,7 +8,7 @@ search libraries.
 
 I use the hyperparameters of the paper: every MLP has only one hidden layer with 400 hidden units, the dimension
 of the latent space is 40 and I use 10 Planar Flows. Also in this case I trained only for 200 epochs. I consider amortized weights
-for the flows. 
+for the flows. The log-likelihood on the test set is -92.0902.
 
 ### Reconstruction examples after 200 epochs, z_dim = 40, MLP with one layer (400 units), 10 Planar Flows
 
