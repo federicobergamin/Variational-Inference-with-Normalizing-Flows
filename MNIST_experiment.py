@@ -55,7 +55,7 @@ AMORTIZED_WEIGHTS = True
 
 N_SAMPLE = 64
 
-SAVE_MODEL_EPOCH = N_EPOCHS + 5
+SAVE_MODEL_EPOCH = N_EPOCHS - 5
 PATH = 'saved_models/'
 
 ## we have the binarized MNIST

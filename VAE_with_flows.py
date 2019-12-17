@@ -359,7 +359,7 @@ class VariationalAutoencoderWithFlows(nn.Module):
             new_z, _ = self.flows(z, None, None, None)
         # when we get to the final flow we get the new_z and we propagate it
         # into the decoder
-        samples =  self.decoder(new_z)
+        samples = self.decoder(new_z)
 
         return samples
 
